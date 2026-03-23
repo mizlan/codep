@@ -55,7 +55,8 @@ mod Spotify {
         pub def fromJsonAt(p: Json.Path.Path, x: JsonElement): Result[JsonError, QueueResponseObject] = {
             forM (
                 map <- FromJson.fromJsonAt(p, x);
-                currentlyPlaying <- Json.getAtKeyOpt(p, "currently_playing", map);
+                currentlyPlayingOpt <- Json.getAtKey(p, "currently_playing", map);
+                currentlyPlaying <- FromJson.fromNullableJsonAt(p, currentlyPlayingOpt);
                 queue <- Json.getAtKey(p, "queue", map)
             ) yield {
                 QueueResponseObject({ currentlyPlaying = currentlyPlaying, queue = queue })
@@ -64,6 +65,7 @@ mod Spotify {
     }
     
     def parseQueueFromResponse(resp: HttpResponse): Result[String, QueueResponseObject] = {
+        Debug.dprintln(resp |> HttpResponse.body);
         forM (
             json <- resp
                 |> HttpResponse.body
@@ -101,7 +103,7 @@ mod Spotify {
                 Base64.encode("${id}:${secret}")
             };
             let refresh = config#spotifyApi#refreshToken;
-            let body = "grant_type=refresh_token&refresh_token=${refresh}";
+            let body = "grant_type=refresh_token&refresh_token=${refresh}&scope=user-read-playback-state%20user-modify-playback-state";
 
             HttpRequest.post("https://accounts.spotify.com/api/token", body)
             |> HttpRequest.withContentType("application/x-www-form-urlencoded")
@@ -128,8 +130,9 @@ mod Spotify {
     pub def addToQueue(accessToken: AccessToken): Result[String, Unit] \ {Http} = {
         let accessTokenStr: String = coerce(accessToken);
         let uri = "spotify:track:2tWioTW2rs0CXf1dTXlRrX";
-        let body = "uri=${uri}";
-        let req = HttpRequest.post("https://api.spotify.com/v1/me/player/queue", body)
+        let queryParams = "uri=${uri}";
+        let req = HttpRequest.post("https://api.spotify.com/v1/me/player/queue?${queryParams}", "")
+            |> HttpRequest.withContentType("application/x-www-form-urlencoded")
             |> HttpRequest.withHeader("Authorization", "Bearer ${accessTokenStr}");
         forM (
             resp <- Http.send(req) |> Result.mapErr(_ -> "HTTP error");

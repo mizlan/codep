@@ -6,9 +6,12 @@ def main(): Unit \ {Console, Logger, Http, FileReadWithResult, Exit} =
     run {
         let x = forM (
             accessToken <- Spotify.generateAccessToken();
-            queue <- Spotify.getQueue(accessToken)
+            queue1 <- Spotify.getQueue(accessToken);
+            _ <- Spotify.addToQueue(accessToken);
+            queue2 <- Spotify.getQueue(accessToken)
         ) yield {
-            Console.println(ToString.toString(queue))
+            Console.println(ToString.toString(queue1));
+            Console.println(ToString.toString(queue2))
         };
         match x {
             case Ok() => ()
