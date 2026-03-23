@@ -1,4 +1,5 @@
 mod Spotify {
+    use Spotify.QueueResponseObject
     use Json.FromJson
     use Json.JsonElement
     use Json.JsonError
@@ -27,8 +28,12 @@ mod Spotify {
             "TrackObject({ name = ${x#name}, uri = ${x#uri} })"
         }
     }
+
+    instance Formattable[TrackObject] {
+        pub def format(x: TrackObject): RichString = RichString.fromString(ToString.toString(x))
+    }
     
-    enum QueueResponseObject({
+    pub enum QueueResponseObject({
         currentlyPlaying = Option[TrackObject],
         queue = List[TrackObject]
     })
@@ -38,6 +43,10 @@ mod Spotify {
             let (QueueResponseObject(x)) = queueResp;
             "QueueResponseObject({ currentlyPlaying = ${x#currentlyPlaying}, queue = ${x#queue} })"
         }
+    }
+
+    instance Formattable[QueueResponseObject] {
+        pub def format(x: QueueResponseObject): RichString = RichString.fromString(ToString.toString(x))
     }
 
     instance FromJson[TrackObject] {
@@ -66,7 +75,6 @@ mod Spotify {
     }
     
     def parseQueueFromResponse(resp: HttpResponse): Result[String, QueueResponseObject] = {
-        Debug.dprintln(resp |> HttpResponse.body);
         forM (
             json <- resp
                 |> HttpResponse.body
@@ -116,7 +124,7 @@ mod Spotify {
     }
 
     
-    eff AccessTokenRead {
+    pub eff AccessTokenRead {
         def getAccessToken(): Result[String, AccessToken]
     }
 
