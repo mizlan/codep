@@ -11,7 +11,7 @@ def main(): Unit \ {Console, Logger, Http, FileReadWithResult} =
                     ) yield queue
                 } with handler ConfigRead {
                     def getConfig(_, resume) = resume(config)
-                }
+                } with Http.withLogging
     ) yield queue;
     match result {
         case Ok(queue) => Console.println(ToString.toString(queue))

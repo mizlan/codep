@@ -11,6 +11,7 @@ mod Spotify {
 
     use TrackObject.TrackObject
     use QueueResponseObject.QueueResponseObject
+    use Config.Config
 
     enum AccessToken(String) with ToString, Coerce
 
@@ -63,16 +64,14 @@ mod Spotify {
     }
     
     def parseQueueFromResponse(resp: HttpResponse): Result[String, QueueResponseObject] = {
-        let jsonElement = resp |> HttpResponse.body |> Json.Parse.parse;
-        match jsonElement {
-            case None => Err("invalid json")
-            case Some(json) => {
-                match Json.FromJson.fromJson(json) {
-                    case Ok(v) => Ok(v)
-                    case Err(_) => Err("json error")
-                }
-            }
-        }
+        forM (
+            json <- resp
+                |> HttpResponse.body
+                |> Json.Parse.parse
+                |> Option.toOk("Invalid JSON");
+            queue <- Json.FromJson.fromJson(json)
+                |> Result.mapErr(_ -> "Queue parsing error")
+        ) yield queue
     }
 
     def parseAccessTokenFromResponse(resp: HttpResponse): Result[String, AccessToken] = {
@@ -88,11 +87,10 @@ mod Spotify {
         }
     }
     
-    pub def getAccessToken(): Result[String, AccessToken] \ {Http, Logger, ConfigRead} = {
-        // taken from https://developer.spotify.com/documentation/web-api/tutorials/getting-started
-        
+    pub def getAccessToken(): Result[String, AccessToken] \ {Http, ConfigRead} = {  
         let req = {
-            let (Config.Config(config)) = ConfigRead.getConfig();
+            let Config(config) = ConfigRead.getConfig();
+            
             let basicAuth = {
                 let id = config#spotifyApi#clientId;
                 let secret = config#spotifyApi#clientSecret;
@@ -105,26 +103,21 @@ mod Spotify {
             |> HttpRequest.withContentType("application/x-www-form-urlencoded")
             |> Net.HttpRequest.withHeader("Authorization", "Basic ${basicAuth}")
         };
-        run {
-            match Http.send(req) {
-                case Ok(resp) =>
-                    parseAccessTokenFromResponse(resp)
-                case Err(err) =>
-                    Logger.warn("Failed to get token ${err}");
-                    Err("did not get token")
-            }
-        } with Http.withLogging
+        match Http.send(req) {
+            case Ok(resp) =>
+                parseAccessTokenFromResponse(resp)
+            case Err(_) =>
+                Err("did not get token")
+        }
     }
 
-    pub def getQueue(accessToken: AccessToken): Result[String, QueueResponseObject] \ {Http, Logger} = {
+    pub def getQueue(accessToken: AccessToken): Result[String, QueueResponseObject] \ {Http} = {
         let accessTokenStr: String = coerce(accessToken);
         let req = HttpRequest.get("https://api.spotify.com/v1/me/player/queue")
             |> HttpRequest.withHeader("Authorization", "Bearer ${accessTokenStr}");
-        run {
-            forM (
-                resp <- Http.send(req) |> Result.mapErr(_ -> "HTTP error");
-                queue <- parseQueueFromResponse(resp)
-            ) yield queue
-        } with Http.withLogging
+        forM (
+            resp <- Http.send(req) |> Result.mapErr(_ -> "HTTP error");
+            queue <- parseQueueFromResponse(resp)
+        ) yield queue
     }
 }
