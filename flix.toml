@@ -1,0 +1,10 @@
+[package]
+name        = "codep"
+description = "spotify queue manipulator"
+version     = "0.1.0"
+flix        = "0.69.2"
+license     = "GPL"
+authors     = ["Michael Lan <michaellan202@gmail.com>"]
+
+[dependencies]
+"github:mlutze/flix-json" = "0.13.1"
