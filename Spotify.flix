@@ -88,10 +88,7 @@ mod Spotify {
             case _ => Err("json invalid")
         }
     }
-    
-    // eff AccessTokenRead {
-    //     def getAccessToken(): AccessToken
-    // }
+
 
     pub def generateAccessToken(): Result[String, AccessToken] \ {Http, Config.ConfigRead} = {  
         let req = {
@@ -117,24 +114,80 @@ mod Spotify {
         }
     }
 
-    pub def getQueue(accessToken: AccessToken): Result[String, QueueResponseObject] \ {Http} = {
+    
+    eff AccessTokenRead {
+        def getAccessToken(): Result[String, AccessToken]
+    }
+
+    pub def handleWithRotatingAccessToken(
+        expiresAfter: Time.Duration,
+        f: a -> b \ ef
+    ): a -> b \ ef - AccessTokenRead + Http + Config.ConfigRead + Time.Clock = {
+        x -> region rc {
+            let lastToken = Ref.fresh(rc, None);
+            def resumeWithGenerated(resume) = {
+                match generateAccessToken() {
+                    case Ok(accessToken) => {
+                        let now = Time.Clock.now();
+                        Ref.put(Some((accessToken, now)), lastToken);
+                        resume(Ok(accessToken))
+                    }
+                    case Err(e) => resume(Err(e))
+                }
+            };
+            run { f(x) } with handler AccessTokenRead {
+                def getAccessToken(_, resume) = {
+                    match Ref.get(lastToken) {
+                        case None => {
+                            resumeWithGenerated(resume)
+                        }
+                        case Some((accessToken, lastRefreshTime)) => {
+                            let now = Time.Clock.now();
+                            if (now > lastRefreshTime + Time.Duration.toMillis(expiresAfter)) {
+                                Ref.put(None, lastToken);
+                                resumeWithGenerated(resume)
+                            } else {
+                                resume(Ok(accessToken))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub def runWithRotatingAccessToken(
+        expiresAfter: Time.Duration,
+        f: Unit -> a \ ef
+    ): a \ ef - AccessTokenRead + Http + Config.ConfigRead + Time.Clock = {
+        handleWithRotatingAccessToken(expiresAfter, f)()
+    }
+
+    def httpSendWithAccessToken(accessToken: AccessToken, req: HttpRequest): Result[IoError, HttpResponse] \ {Http} = {
         let accessTokenStr: String = coerce(accessToken);
-        let req = HttpRequest.get("https://api.spotify.com/v1/me/player/queue")
-            |> HttpRequest.withHeader("Authorization", "Bearer ${accessTokenStr}");
+        req
+        |> HttpRequest.withHeader("Authorization", "Bearer ${accessTokenStr}")
+        |> Http.send
+    }
+
+    pub def getQueue(): Result[String, QueueResponseObject] \ {Http, AccessTokenRead} = {
         forM (
-            resp <- Http.send(req) |> Result.mapErr(_ -> "HTTP error");
+            accessToken <- AccessTokenRead.getAccessToken();
+            resp <- HttpRequest.get("https://api.spotify.com/v1/me/player/queue")
+                |> httpSendWithAccessToken(accessToken)
+                |> Result.mapErr(_ -> "HTTP error");
             queue <- parseQueueFromResponse(resp)
         ) yield queue
     }
 
-    pub def addToQueue(accessToken: AccessToken): Result[String, Unit] \ {Http} = {
-        let accessTokenStr: String = coerce(accessToken);
+    pub def addToQueue(): Result[String, Unit] \ {Http, AccessTokenRead} = {
         let uri = "spotify:track:2tWioTW2rs0CXf1dTXlRrX";
         let queryParams = "uri=${uri}";
-        let req = HttpRequest.post("https://api.spotify.com/v1/me/player/queue?${queryParams}", "")
-            |> HttpRequest.withHeader("Authorization", "Bearer ${accessTokenStr}");
         forM (
-            resp <- Http.send(req) |> Result.mapErr(_ -> "HTTP error");
+            accessToken <- AccessTokenRead.getAccessToken();
+            resp <- HttpRequest.post("https://api.spotify.com/v1/me/player/queue?${queryParams}", "")
+                |> httpSendWithAccessToken(accessToken)
+                |> Result.mapErr(_ -> "HTTP error");
             res <- if (HttpResponse.isSuccess(resp)) {
                     Ok(())
                 } else {

@@ -1,14 +1,14 @@
 use Sys.Exit
 use Net.Http
 use Sys.Console
+use Time.Clock
 
-def main(): Unit \ {Console, Logger, Http, FileReadWithResult, Exit} =
+def main(): Unit \ {Console, Logger, Http, FileReadWithResult, Exit, Clock} =
     run {
         let x = forM (
-            accessToken <- Spotify.generateAccessToken();
-            queue1 <- Spotify.getQueue(accessToken);
-            _ <- Spotify.addToQueue(accessToken);
-            queue2 <- Spotify.getQueue(accessToken)
+            queue1 <- Spotify.getQueue();
+            _ <- Spotify.addToQueue();
+            queue2 <- Spotify.getQueue()
         ) yield {
             Console.println(ToString.toString(queue1));
             Console.println(ToString.toString(queue2))
@@ -19,4 +19,5 @@ def main(): Unit \ {Console, Logger, Http, FileReadWithResult, Exit} =
         }
     }
         with Http.withLogging
+        with Spotify.runWithRotatingAccessToken(Time.Duration.minutes(30))
         with Config.runWithDotenv
