@@ -3,7 +3,8 @@ use Config.Config
 pub enum Config({
     spotifyApi = {
         clientId = String,
-        clientSecret = String
+        clientSecret = String,
+        refreshToken = String
     }
 })
 
@@ -11,8 +12,13 @@ eff ConfigRead {
     def getConfig(): Config
 }
 
-def makeConfig(clientId: String, clientSecret: String): Config =
-    Config({ spotifyApi = { clientId = clientId, clientSecret = clientSecret }})
+def makeConfig(clientId: String, clientSecret: String,
+               refreshToken: String): Config =
+    Config({ spotifyApi = {
+        clientId = clientId,
+        clientSecret = clientSecret,
+        refreshToken = refreshToken }
+    })
 
 def parseEntry(line: String): Option[(String, String)] = {
     let (k, equals_v) = String.breakOnLeft({ substr = "=" }, line);
@@ -42,9 +48,10 @@ def validateConfigKey(key: String, raw: MultiMap[String, String]): Validation[Va
 def validateConfig(raw: MultiMap[String, String]): Validation[ValidationError, Config] = {
     forA (
         clientId <- validateConfigKey("SPOTIFY_CLIENT_ID", raw);
-        clientSecret <- validateConfigKey("SPOTIFY_CLIENT_SECRET", raw)
+        clientSecret <- validateConfigKey("SPOTIFY_CLIENT_SECRET", raw);
+        refreshToken <- validateConfigKey("SPOTIFY_REFRESH_TOKEN", raw)
     ) yield {
-        makeConfig(clientId, clientSecret)
+        makeConfig(clientId, clientSecret, refreshToken)
     }
 }
 

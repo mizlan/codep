@@ -90,27 +90,36 @@ mod Spotify {
     
     pub def getAccessToken(): Result[String, AccessToken] \ {Http, Logger, ConfigRead} = {
         // taken from https://developer.spotify.com/documentation/web-api/tutorials/getting-started
-        let (Config.Config(config)) = ConfigRead.getConfig();
-        let id = config#spotifyApi#clientId;
-        let secret = config#spotifyApi#clientSecret;
-        let body = "grant_type=client_credentials&client_id=${id}&client_secret=${secret}";
-        let req =
+        
+        let req = {
+            let (Config.Config(config)) = ConfigRead.getConfig();
+            let basicAuth = {
+                let id = config#spotifyApi#clientId;
+                let secret = config#spotifyApi#clientSecret;
+                Base64.encode("${id}:${secret}")
+            };
+            let refresh = config#spotifyApi#refreshToken;
+            let body = "grant_type=refresh_token&refresh_token=${refresh}";
+
             HttpRequest.post("https://accounts.spotify.com/api/token", body)
-            |> HttpRequest.withContentType("application/x-www-form-urlencoded");
+            |> HttpRequest.withContentType("application/x-www-form-urlencoded")
+            |> Net.HttpRequest.withHeader("Authorization", "Basic ${basicAuth}")
+        };
         run {
             match Http.send(req) {
                 case Ok(resp) =>
                     parseAccessTokenFromResponse(resp)
                 case Err(err) =>
                     Logger.warn("Failed to get token ${err}");
-                    Err("cooked")
+                    Err("did not get token")
             }
         } with Http.withLogging
     }
 
     pub def getQueue(accessToken: AccessToken): Result[String, QueueResponseObject] \ {Http, Logger} = {
+        let accessTokenStr: String = coerce(accessToken);
         let req = HttpRequest.get("https://api.spotify.com/v1/me/player/queue")
-            |> HttpRequest.withBearerToken(coerce(accessToken));
+            |> HttpRequest.withHeader("Authorization", "Bearer ${accessTokenStr}");
         run {
             forM (
                 resp <- Http.send(req) |> Result.mapErr(_ -> "HTTP error");

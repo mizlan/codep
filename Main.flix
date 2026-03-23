@@ -15,14 +15,10 @@ def main(): Unit \ {IO, Logger, Http, FileReadWithResult} =
                         case Ok(queue) => Console.println(ToString.toString(queue))
                         case Err(e) => Console.println(e)
                     }
+                } with handler ConfigRead {
+                    def getConfig(_, resume) = 
+                        resume(config)
                 }
-                    with handler ConfigRead {
-                        def getConfig(_, resume) = 
-                            resume(config)
-                    }
             case Err(e) => Console.println(ToString.toString(e))
         }
-    }
-        with Console.runWithIO
-    
-    
+    } with Console.runWithIO
