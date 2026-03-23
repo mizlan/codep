@@ -11,7 +11,7 @@ mod Spotify {
 
     use TrackObject.TrackObject
     use QueueResponseObject.QueueResponseObject
-    use Config.Config
+    use Config.Config.Config
 
     enum AccessToken(String) with ToString, Coerce
 
@@ -87,10 +87,14 @@ mod Spotify {
         }
     }
     
-    pub def getAccessToken(): Result[String, AccessToken] \ {Http, ConfigRead} = {  
+    // eff AccessTokenRead {
+    //     def getAccessToken(): AccessToken
+    // }
+
+    pub def generateAccessToken(): Result[String, AccessToken] \ {Http, Config.ConfigRead} = {  
         let req = {
-            let Config(config) = ConfigRead.getConfig();
-            
+            let Config(config) = Config.ConfigRead.getConfig();
+
             let basicAuth = {
                 let id = config#spotifyApi#clientId;
                 let secret = config#spotifyApi#clientSecret;
