@@ -132,7 +132,6 @@ mod Spotify {
         let uri = "spotify:track:2tWioTW2rs0CXf1dTXlRrX";
         let queryParams = "uri=${uri}";
         let req = HttpRequest.post("https://api.spotify.com/v1/me/player/queue?${queryParams}", "")
-            |> HttpRequest.withContentType("application/x-www-form-urlencoded")
             |> HttpRequest.withHeader("Authorization", "Bearer ${accessTokenStr}");
         forM (
             resp <- Http.send(req) |> Result.mapErr(_ -> "HTTP error");
