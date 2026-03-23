@@ -69,7 +69,7 @@ mod Secrets {
         )
     }
 
-    pub def readSecretsFromFile(filename: String): Result[SecretsReadError, Secrets] \ FileRead = {
+    def readSecretsFromFile(filename: String): Result[SecretsReadError, Secrets] \ FileRead = {
         forM (
             secretsLines <- FileRead.readLines(filename)
                 |> Result.mapErr(SecretsReadError.IoError);
@@ -84,17 +84,22 @@ mod Secrets {
         }
     }
 
-    pub def handleWithDotenv(f: a -> b \ ef): a -> b \ (ef - SecretsRead) + FileRead + Exit = {
+    pub def handleWithSecretsFile(filename: String, f: a -> b \ ef): a -> b \ (ef - SecretsRead) + FileRead + Exit = {
         x -> {
-                match readSecretsFromFile(".env") {
-                    case Ok(secrets) =>
-                        run { f(x) } with handler SecretsRead {
-                            def getSecrets(_, resume) = resume(secrets)
-                        }
-                    case Err(_) => Exit.exit(1)
-                }
+            match readSecretsFromFile(filename) {
+                case Ok(secrets) =>
+                    run { f(x) } with handler SecretsRead {
+                        def getSecrets(_, resume) = resume(secrets)
+                    }
+                case Err(_) => Exit.exit(1)
             }
+        }
     }
-    
+
+    pub def runWithSecretsFile(filename: String, f: Unit -> a \ ef): a \ (ef - SecretsRead) + FileRead + Exit = handleWithSecretsFile(filename, f)()
+
+    pub def handleWithDotenv(f: a -> b \ ef): a -> b \ (ef - SecretsRead) + FileRead + Exit =
+        handleWithSecretsFile(".env", f)
+
     pub def runWithDotenv(f: Unit -> a \ ef): a \ (ef - SecretsRead) + FileRead + Exit = handleWithDotenv(f)()
 }
