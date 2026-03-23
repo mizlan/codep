@@ -90,7 +90,7 @@ mod Config {
                         run { f(x) } with handler ConfigRead {
                             def getConfig(_, resume) = resume(config)
                         }
-                    case Err(_e) => Exit.exit(1)
+                    case Err(_) => Exit.exit(1)
                 }
             }
     }
