@@ -11,8 +11,8 @@ mod Spotify {
 
     use TrackObject.TrackObject
     use QueueResponseObject.QueueResponseObject
-    use Config.Config.Config
-    use Config.ConfigRead
+    use Secrets.Secrets.Secrets
+    use Secrets.SecretsRead
 
     enum AccessToken(String) with ToString, Coerce
 
@@ -91,16 +91,16 @@ mod Spotify {
     }
 
 
-    pub def generateAccessToken(): Result[String, AccessToken] \ {Http, ConfigRead} = {  
+    pub def generateAccessToken(): Result[String, AccessToken] \ {Http, SecretsRead} = {  
         let req = {
-            let Config(config) = ConfigRead.getConfig();
+            let Secrets(secrets) = SecretsRead.getSecrets();
 
             let basicAuth = {
-                let id = config#spotifyApi#clientId;
-                let secret = config#spotifyApi#clientSecret;
+                let id = secrets#spotifyApi#clientId;
+                let secret = secrets#spotifyApi#clientSecret;
                 Base64.encode("${id}:${secret}")
             };
-            let refresh = config#spotifyApi#refreshToken;
+            let refresh = secrets#spotifyApi#refreshToken;
             let body = "grant_type=refresh_token&refresh_token=${refresh}&scope=user-read-playback-state%20user-modify-playback-state";
 
             HttpRequest.post("https://accounts.spotify.com/api/token", body)
@@ -123,7 +123,7 @@ mod Spotify {
     pub def handleWithRotatingAccessToken(
         expiresAfter: Time.Duration,
         f: a -> b \ ef
-    ): a -> b \ ef - AccessTokenRead + Http + ConfigRead + Time.Clock = {
+    ): a -> b \ ef - AccessTokenRead + Http + SecretsRead + Time.Clock = {
         x -> region rc {
             let lastToken = Ref.fresh(rc, None);
             def resumeWithGenerated(resume) = {
@@ -160,7 +160,7 @@ mod Spotify {
     pub def runWithRotatingAccessToken(
         expiresAfter: Time.Duration,
         f: Unit -> a \ ef
-    ): a \ ef - AccessTokenRead + Http + Config.ConfigRead + Time.Clock = {
+    ): a \ ef - AccessTokenRead + Http + Secrets.SecretsRead + Time.Clock = {
         handleWithRotatingAccessToken(expiresAfter, f)()
     }
 

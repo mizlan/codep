@@ -1,9 +1,9 @@
-mod Config {
+mod Secrets {
     use Sys.Exit
-    use Config.Config
+    use Secrets.Secrets
     use Fs.FileRead
 
-    pub enum Config({
+    pub enum Secrets({
         spotifyApi = {
             clientId = String,
             clientSecret = String,
@@ -11,13 +11,13 @@ mod Config {
         }
     })
 
-    pub eff ConfigRead {
-        def getConfig(): Config
+    pub eff SecretsRead {
+        def getSecrets(): Secrets
     }
 
-    def makeConfig(clientId: String, clientSecret: String,
-                refreshToken: String): Config =
-        Config({ spotifyApi = {
+    def makeSecrets(clientId: String, clientSecret: String,
+                refreshToken: String): Secrets =
+        Secrets({ spotifyApi = {
             clientId = clientId,
             clientSecret = clientSecret,
             refreshToken = refreshToken }
@@ -35,12 +35,12 @@ mod Config {
         case DuplicateKey(String)
     }
 
-    enum ConfigReadError with ToString {
+    enum SecretsReadError with ToString {
         case IoError(IoError)
         case ValidationErrors(Nec[ValidationError])
     }
 
-    def validateConfigKey(key: String, raw: MultiMap[String, String]): Validation[ValidationError, String] = {
+    def validateSecretsKey(key: String, raw: MultiMap[String, String]): Validation[ValidationError, String] = {
         match MultiMap.get(key, raw) |> Set.toList {
             case v :: Nil => Validation.Success(v)
             case Nil => Validation.Failure(Nec.singleton(ValidationError.MissingKey(key)))
@@ -48,13 +48,13 @@ mod Config {
         }
     }
 
-    def validateConfig(raw: MultiMap[String, String]): Validation[ValidationError, Config] = {
+    def validateSecrets(raw: MultiMap[String, String]): Validation[ValidationError, Secrets] = {
         forA (
-            clientId <- validateConfigKey("SPOTIFY_CLIENT_ID", raw);
-            clientSecret <- validateConfigKey("SPOTIFY_CLIENT_SECRET", raw);
-            refreshToken <- validateConfigKey("SPOTIFY_REFRESH_TOKEN", raw)
+            clientId <- validateSecretsKey("SPOTIFY_CLIENT_ID", raw);
+            clientSecret <- validateSecretsKey("SPOTIFY_CLIENT_SECRET", raw);
+            refreshToken <- validateSecretsKey("SPOTIFY_REFRESH_TOKEN", raw)
         ) yield {
-            makeConfig(clientId, clientSecret, refreshToken)
+            makeSecrets(clientId, clientSecret, refreshToken)
         }
     }
 
@@ -69,32 +69,32 @@ mod Config {
         )
     }
 
-    pub def readConfigFromFile(filename: String): Result[ConfigReadError, Config] \ FileRead = {
+    pub def readSecretsFromFile(filename: String): Result[SecretsReadError, Secrets] \ FileRead = {
         forM (
-            configLines <- FileRead.readLines(filename)
-                |> Result.mapErr(ConfigReadError.IoError);
-            config <- configLines
+            secretsLines <- FileRead.readLines(filename)
+                |> Result.mapErr(SecretsReadError.IoError);
+            secrets <- secretsLines
                 |> List.filterMap(parseEntry)
                 |> listToMultiMap
-                |> validateConfig
+                |> validateSecrets
                 |> Validation.toResult
-                |> Result.mapErr(ConfigReadError.ValidationErrors)
+                |> Result.mapErr(SecretsReadError.ValidationErrors)
         ) yield {
-            config
+            secrets
         }
     }
 
-    pub def handleWithDotenv(f: a -> b \ ef): a -> b \ (ef - ConfigRead) + FileRead + Exit = {
+    pub def handleWithDotenv(f: a -> b \ ef): a -> b \ (ef - SecretsRead) + FileRead + Exit = {
         x -> {
-                match readConfigFromFile(".env") {
-                    case Ok(config) =>
-                        run { f(x) } with handler ConfigRead {
-                            def getConfig(_, resume) = resume(config)
+                match readSecretsFromFile(".env") {
+                    case Ok(secrets) =>
+                        run { f(x) } with handler SecretsRead {
+                            def getSecrets(_, resume) = resume(secrets)
                         }
                     case Err(_) => Exit.exit(1)
                 }
             }
     }
     
-    pub def runWithDotenv(f: Unit -> a \ ef): a \ (ef - ConfigRead) + FileRead + Exit = handleWithDotenv(f)()
+    pub def runWithDotenv(f: Unit -> a \ ef): a \ (ef - SecretsRead) + FileRead + Exit = handleWithDotenv(f)()
 }

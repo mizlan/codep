@@ -21,4 +21,4 @@ def main(): Unit \ {Console, Logger, Http, FileRead, Exit, Clock} =
     }
         with Http.withLogging
         with Spotify.runWithRotatingAccessToken(Time.Duration.minutes(30))
-        with Config.runWithDotenv
+        with Secrets.runWithDotenv
