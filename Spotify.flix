@@ -120,4 +120,22 @@ mod Spotify {
             queue <- parseQueueFromResponse(resp)
         ) yield queue
     }
+
+    pub def addToQueue(accessToken: AccessToken): Result[String, Unit] \ {Http} = {
+        let accessTokenStr: String = coerce(accessToken);
+        let uri = "spotify:track:2tWioTW2rs0CXf1dTXlRrX";
+        let body = "uri=${uri}";
+        let req = HttpRequest.post("https://api.spotify.com/v1/me/player/queue", body)
+            |> HttpRequest.withHeader("Authorization", "Bearer ${accessTokenStr}");
+        forM (
+            resp <- Http.send(req) |> Result.mapErr(_ -> "HTTP error");
+            res <- if (HttpResponse.isSuccess(resp)) {
+                    Ok(())
+                } else {
+                    Err("Failed")
+                }
+        ) yield {
+            res
+        }
+    }
 }
