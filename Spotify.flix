@@ -12,6 +12,7 @@ mod Spotify {
     use TrackObject.TrackObject
     use QueueResponseObject.QueueResponseObject
     use Config.Config.Config
+    use Config.ConfigRead
 
     enum AccessToken(String) with ToString, Coerce
 
@@ -90,9 +91,9 @@ mod Spotify {
     }
 
 
-    pub def generateAccessToken(): Result[String, AccessToken] \ {Http, Config.ConfigRead} = {  
+    pub def generateAccessToken(): Result[String, AccessToken] \ {Http, ConfigRead} = {  
         let req = {
-            let Config(config) = Config.ConfigRead.getConfig();
+            let Config(config) = ConfigRead.getConfig();
 
             let basicAuth = {
                 let id = config#spotifyApi#clientId;
@@ -122,7 +123,7 @@ mod Spotify {
     pub def handleWithRotatingAccessToken(
         expiresAfter: Time.Duration,
         f: a -> b \ ef
-    ): a -> b \ ef - AccessTokenRead + Http + Config.ConfigRead + Time.Clock = {
+    ): a -> b \ ef - AccessTokenRead + Http + ConfigRead + Time.Clock = {
         x -> region rc {
             let lastToken = Ref.fresh(rc, None);
             def resumeWithGenerated(resume) = {
