@@ -1,6 +1,7 @@
 mod Config {
     use Sys.Exit
     use Config.Config
+    use Fs.FileRead
 
     pub enum Config({
         spotifyApi = {
@@ -68,9 +69,9 @@ mod Config {
         )
     }
 
-    pub def readConfigFromFile(filename: String): Result[ConfigReadError, Config] \ FileReadWithResult = {
+    pub def readConfigFromFile(filename: String): Result[ConfigReadError, Config] \ FileRead = {
         forM (
-            configLines <- FileReadWithResult.readLines(filename)
+            configLines <- FileRead.readLines(filename)
                 |> Result.mapErr(ConfigReadError.IoError);
             config <- configLines
                 |> List.filterMap(parseEntry)
@@ -83,7 +84,7 @@ mod Config {
         }
     }
 
-    pub def handleWithDotenv(f: a -> b \ ef): a -> b \ (ef - ConfigRead) + FileReadWithResult + Exit = {
+    pub def handleWithDotenv(f: a -> b \ ef): a -> b \ (ef - ConfigRead) + FileRead + Exit = {
         x -> {
                 match readConfigFromFile(".env") {
                     case Ok(config) =>
@@ -95,5 +96,5 @@ mod Config {
             }
     }
     
-    pub def runWithDotenv(f: Unit -> a \ ef): a \ (ef - ConfigRead) + FileReadWithResult + Exit = handleWithDotenv(f)()
+    pub def runWithDotenv(f: Unit -> a \ ef): a \ (ef - ConfigRead) + FileRead + Exit = handleWithDotenv(f)()
 }
