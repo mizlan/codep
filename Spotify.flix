@@ -1,7 +1,8 @@
 mod Spotify {
-    use Spotify.QueueResponseObject
+    use Json.ToJson
     use Json.FromJson
     use Json.JsonElement
+    use Json.JsonElement.{JsonString,JsonObject}
     use Json.JsonError
     use Json.JsonElement.JsonObject
     use Json.JsonElement.JsonString
@@ -17,7 +18,7 @@ mod Spotify {
 
     enum AccessToken(String) with ToString, Coerce
 
-    enum TrackObject({
+    pub enum TrackObject({
         name = String,
         uri = String
     })
@@ -28,7 +29,7 @@ mod Spotify {
             "TrackObject({ name = ${x#name}, uri = ${x#uri} })"
         }
     }
-
+    
     instance Formattable[TrackObject] {
         pub def format(x: TrackObject): RichString = RichString.fromString(ToString.toString(x))
     }
@@ -57,6 +58,19 @@ mod Spotify {
                 uri <- Json.getAtKey(p, "uri", map)
             ) yield {
                 TrackObject({ name = name, uri = uri })
+            }
+        }
+    }
+
+    instance ToJson[TrackObject] {
+        pub def toJson(x: TrackObject): JsonElement = {
+            match x {
+                case (TrackObject({ name, uri })) => {
+                    JsonObject(Map#{
+                        "name" => JsonString(name),
+                        "uri" => JsonString(uri)
+                    })
+                }
             }
         }
     }
