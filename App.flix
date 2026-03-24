@@ -3,6 +3,7 @@ mod App {
     use Time.Sleep
     use Spotify.QueueResponseObject.QueueResponseObject
 
+    @Tailrec
     pub def loop(): Void \ {Logger, Sleep, Net.Http, Spotify.AccessTokenRead} = {
         match Spotify.getQueue() {
             case Ok(QueueResponseObject(v)) => Logger.info(v#currentlyPlaying)

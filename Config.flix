@@ -1,5 +1,6 @@
 mod Config {
     use Fs.{FileWrite, FileRead}
+    use Sys.Exit
 
     use Json.JsonElement
     use Json.FromJson
@@ -98,5 +99,26 @@ mod Config {
             json <- Json.Parse.parse(contents) |> Option.toOk("Not valid JSON");
             config <- FromJson.fromJson(json) |> Result.mapErr(_ -> "JSON could not be parsed into Config")
         ) yield config
+    }
+
+    pub eff ConfigRead {
+        def getConfig(): Config
+    }
+
+    pub def handleWithConfigFile(
+        filename: String,
+        f: a -> b \ ef
+    ): a -> b \ (ef - ConfigRead) + FileRead + Exit = {
+        x -> {
+            // FIXME: it might be better to read anew each time
+            match readConfigFromFile(filename) {
+                case Ok(config) => {
+                    run { f(x) } with handler ConfigRead {
+                        def getConfig(_, resume) = resume(config)
+                    }
+                }
+                case Err(_) => Exit.exit(1)
+            }
+        }
     }
 }
