@@ -9,5 +9,6 @@ def main(): Unit \ {Logger, Http, FileRead, Exit, Clock, Sleep} =
         App.loop()
     }
         with Http.withLogging
+        with Config.runWithConfigFile("config.json")
         with Spotify.runWithRotatingAccessToken(Time.Duration.minutes(30))
         with Secrets.runWithDotenv

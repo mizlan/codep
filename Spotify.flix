@@ -23,6 +23,19 @@ mod Spotify {
         uri = String
     })
 
+    instance Eq[TrackObject] {
+        pub def eq(x: TrackObject, y: TrackObject): Bool = {
+            match (x, y) {
+                case (
+                    TrackObject({ name = name1, uri = uri1}),
+                    TrackObject({ name = name2, uri = uri2 })
+                ) => {
+                    (name1 == name2) and (uri1 == uri2)
+                }
+            }
+        }
+    }
+
     instance ToString[TrackObject] {
         pub def toString(track: TrackObject): String = {
             let (TrackObject(x)) = track;

@@ -12,11 +12,11 @@ mod Config {
 
     use Config.Config
 
-    enum Rule with ToString {
+    pub enum Rule with ToString {
         case Follow(TrackObject, TrackObject)
     }
 
-    enum Config({
+    pub enum Config({
         rules = List[Rule]
     })
 
@@ -121,4 +121,10 @@ mod Config {
             }
         }
     }
+    
+    pub def runWithConfigFile(
+        filename: String,
+        f: Unit -> a \ ef
+    ): a \ (ef - ConfigRead) + FileRead + Exit = handleWithConfigFile(filename, f)()
+
 }
