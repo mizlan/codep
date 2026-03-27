@@ -84,7 +84,7 @@ mod Config {
         }
     }
     
-    def configToJsonString(config: Config): String = {
+    pub def configToJsonString(config: Config): String = {
         Json.Write.toPrettyString(4, ToJson.toJson(config))
     }
 
