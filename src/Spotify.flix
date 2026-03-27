@@ -216,8 +216,8 @@ mod Spotify {
         ) yield queue
     }
 
-    pub def addToQueue(): Result[String, Unit] \ {Http, AccessTokenRead} = {
-        let uri = "spotify:track:2tWioTW2rs0CXf1dTXlRrX";
+    pub def addToQueue(track: TrackObject): Result[String, Unit] \ {Http, AccessTokenRead} = {
+        let TrackObject({ uri | _ }) = track;
         let queryParams = "uri=${uri}";
         forM (
             accessToken <- AccessTokenRead.getAccessToken();
