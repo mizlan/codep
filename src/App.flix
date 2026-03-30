@@ -1,10 +1,14 @@
 mod App {
+    use Net.Http
+    use Time.Sleep
+
     use Config.ConfigRead
     use Config.Rule
     use Config.Config
     use Config.Config.Config
-    use Time.Sleep
+
     use Spotify.QueueResponseObject
+    use Spotify.AccessTokenRead
     use Spotify.QueueResponseObject.QueueResponseObject
     use Spotify.TrackObject.TrackObject
 
@@ -18,7 +22,7 @@ mod App {
             case Rule.Follow(TrackObject(a), TrackObject(b)) => {
                 match queue {
                     case QueueResponseObject({
-                        currentlyPlaying = Some(TrackObject(track1)),
+                       currentlyPlaying = Some(TrackObject(track1)),
                         queue = TrackObject(track2) :: _
                     }) if track1#uri == a#uri and track2#uri != b#uri => true 
                     case QueueResponseObject({
@@ -30,18 +34,26 @@ mod App {
             }
         }
     }
-    
-    def applyRule(rule: Rule): Result[String, Unit] \ {} = {
-        unreachable!()
+
+    def applyRule(rule: Rule): Result[String, Unit] \ {Http, AccessTokenRead} = {
+        match rule {
+            case Rule.Follow(_, b) => Spotify.addToQueue(b) 
+        }
     }
 
     @Tailrec
-    pub def loop(): Void \ {Logger, Sleep, Net.Http, Spotify.AccessTokenRead, ConfigRead} = {
+    pub def loop(): Void \ {Logger, Sleep, Http, AccessTokenRead, ConfigRead} = {
         match Spotify.getQueue() {
-            // case Ok(QueueResponseObject(v)) => Logger.info(v#currentlyPlaying)
             case Ok(queue) => {
+                match queue {
+                    case QueueResponseObject({ currentlyPlaying = Some(Spotify.TrackObject.TrackObject({ uri = uri | _ })) | _ }) => {
+                        Logger.trace("Found queue with ${uri} as the head element")
+                    }
+                    case _ => Logger.trace("Found queue without playing")
+                };
                 match findMatchingRule(ConfigRead.getConfig(), queue) {
                     case Some(rule) => {
+                        Logger.trace("Found matching rule");
                         match applyRule(rule) {
                             case Ok(()) => Logger.info("Applied rule")
                             case Err(e) => Logger.warn(e)
