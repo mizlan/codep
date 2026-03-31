@@ -64,7 +64,7 @@ mod App {
             }
             case Err(e) => Logger.warn(e)
         };
-        Sleep.sleep(Time.Duration.seconds(5));
+        Sleep.sleep(Time.Duration.seconds(55));
         loop()
     }
 }
